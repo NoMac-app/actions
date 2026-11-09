@@ -1,9 +1,12 @@
 // NoMac's sign step: the project on this job's NoMac Mac gets App Store profiles from NoMac's CI certificate and a
 // keychain of its own; the files and commands that sign the archive come back. Only a workflow the account allowed on
 // nomac.app/dash/ci, on the default branch (or a tag, if allowed), signs.
+import { resolve } from "node:path";
 import { fail, hand, input, nomac, onMac } from "../lib/nomac.mjs";
 
-const answer = await nomac("POST", "/api/v1/ci/sign", { path: input("path", "."), ...(input("scheme") ? { scheme: input("scheme") } : {}), ...(input("container") ? { container: input("container") } : {}) });
+// The project as a path on this Mac: relative to the job's checkout (NoMac reads a relative one from ~/workspace, a Session's).
+const path = resolve(process.env.GITHUB_WORKSPACE || process.cwd(), input("path", "."));
+const answer = await nomac("POST", "/api/v1/ci/sign", { path, ...(input("scheme") ? { scheme: input("scheme") } : {}), ...(input("container") ? { container: input("container") } : {}) });
 if (!answer?.files?.xcconfig) fail("NoMac's answer named no signing files.");
 const build = answer.build_number ? String(answer.build_number) : answer.app_record ? "1" : undefined;
 const xcconfig = onMac(answer.files.xcconfig), exportOptions = onMac(answer.files.export_options);

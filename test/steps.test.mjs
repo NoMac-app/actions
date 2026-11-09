@@ -40,11 +40,12 @@ test("sign hands the files to the next steps, after asking again for a job NoMac
     [200, { team_id: "TEAM123456", build_number: 7, files: { xcconfig: "~/.nomac/signing/TEAM123456.xcconfig", export_options: "~/.nomac/signing/TEAM123456-ExportOptions.plist" },
       project: { scheme: "App" }, identity: { name: "Apple Distribution: Acme" }, changes: [], profiles: [], commands: { xcodebuild: ["xcodebuild archive ..."] } }]]);
   try {
-    const result = await step("sign", nomac.url, { INPUT_PATH: "ios" });
+    const result = await step("sign", nomac.url, { INPUT_PATH: "ios", GITHUB_WORKSPACE: "/tmp/checkout" });
     assert.equal(result.code, 0, result.out);
     assert.match(result.env, /^NOMAC_XCCONFIG<<(NOMAC_[0-9a-f]{16})\n\/Users\/runner\/\.nomac\/signing\/TEAM123456\.xcconfig\n\1$/m);
     assert.match(result.env, /^NOMAC_BUILD_NUMBER<<(NOMAC_[0-9a-f]{16})\n7\n\1$/m);
     assert.match(result.outputs, /^team-id<<(NOMAC_[0-9a-f]{16})\nTEAM123456\n\1$/m);
+    assert.equal(JSON.parse(nomac.bodies.at(-1)).path, "/tmp/checkout/ios", "the project's path on this Mac, from the job's checkout");
     const calls = nomac.seen.filter(line => line.startsWith("POST"));
     assert.equal(calls.length, 2);
     assert.notEqual(calls[0].split(" ").pop(), calls[1].split(" ").pop(), "a fresh token for each call");
