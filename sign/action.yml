@@ -1,0 +1,28 @@
+name: NoMac sign
+description: Sign an iOS app on a NoMac CI Mac with NoMac's App Store profiles, with no Apple secret stored in GitHub.
+author: NoMac
+inputs:
+  path:
+    description: The project's folder in the checkout.
+    default: "."
+  scheme:
+    description: The scheme to sign, when the project has several.
+    required: false
+  container:
+    description: The .xcodeproj or .xcworkspace, when the folder has several.
+    required: false
+outputs:
+  xcconfig:
+    description: The xcconfig that signs the archive (also NOMAC_XCCONFIG).
+  export-options:
+    description: The ExportOptions.plist for the export (also NOMAC_EXPORT_OPTIONS).
+  team-id:
+    description: The Apple team (also NOMAC_TEAM_ID).
+  build-number:
+    description: The build number NoMac reserved for this build, when it could (also NOMAC_BUILD_NUMBER).
+runs:
+  using: node24
+  main: index.mjs
+branding:
+  icon: lock
+  color: blue

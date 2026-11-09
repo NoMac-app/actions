@@ -1,0 +1,24 @@
+name: NoMac TestFlight
+description: Send a signed .ipa from a NoMac CI Mac to TestFlight; the App Store Connect key stays on NoMac's server.
+author: NoMac
+inputs:
+  ipa:
+    description: The .ipa on this Mac.
+    required: true
+  notes:
+    description: What to Test, for testers.
+    required: false
+  wait:
+    description: "sent (Apple has the build; the default) or testflight (it is on TestFlight)."
+    default: sent
+outputs:
+  upload-id:
+    description: NoMac's id for the send.
+  state:
+    description: processing or on_testflight.
+runs:
+  using: node24
+  main: index.mjs
+branding:
+  icon: send
+  color: blue
