@@ -1,0 +1,22 @@
+# Every pull request built on a NoMac phone (an iPhone Simulator, billed per minute from your NoMac credit), the flows it
+# touches run and recorded, and one comment on it, edited on every push. Add your NoMac API key as the repository secret
+# NOMAC_API_KEY (nomac.app/dash/keys). A closed pull request's run deletes the build its phone link opened.
+name: Proof
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: proof-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        if: github.event.action != 'closed'
+      - uses: NoMac-app/actions/proof@v1
+        with:
+          api-key: ${{ secrets.NOMAC_API_KEY }}

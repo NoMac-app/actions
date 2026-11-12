@@ -1,0 +1,7 @@
+# Sign in with a test account.
+# paths: Sources/AccountView.swift
+tap "Account"
+fill #email reviewer@example.com
+fill #password proof-demo
+tap #signIn
+wait "Signed in as reviewer@example.com"

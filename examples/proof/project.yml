@@ -1,0 +1,19 @@
+# NoMac Proof's sample app: a small SwiftUI shop. Each pull request builds it on a NoMac phone from this file (XcodeGen
+# runs there), runs the flows in .nomac/flows that its changes touch, and comments with their recordings and a phone link.
+name: ProofDemo
+options:
+  bundleIdPrefix: app.nomac
+  deploymentTarget:
+    iOS: "18.0"
+targets:
+  ProofDemo:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.nomac.ProofDemo
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        CODE_SIGNING_ALLOWED: NO
+        SWIFT_VERSION: "6.0"

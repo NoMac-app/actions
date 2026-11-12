@@ -1,0 +1,8 @@
+# Add two items, check out.
+# paths: Sources/ShopView.swift, Sources/CartView.swift, Sources/ProofDemoApp.swift
+tap #add-Espresso
+tap #add-Croissant
+tap "Cart"
+wait "2 items, $5.50"
+tap #checkout
+wait "Order placed"

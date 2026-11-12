@@ -1,0 +1,85 @@
+name: NoMac Proof
+description: Build each pull request's iOS app on a NoMac iPhone Simulator, run the flows it changed, and post a recording and a phone link on the pull request.
+author: NoMac
+inputs:
+  api-key:
+    description: A NoMac API key for the account that pays (a repository secret, such as secrets.NOMAC_API_KEY).
+    required: true
+  path:
+    description: The folder with the Xcode project, .xcworkspace or project.yml, in the repository.
+    default: "."
+  scheme:
+    description: The scheme to build, when the project has several.
+    required: false
+  configuration:
+    description: Debug (the default) or Release.
+    required: false
+  env:
+    description: "The app's launch variables, as \"API_URL=https://staging.example MODE=test\"."
+    required: false
+  flows:
+    description: A folder of .flow files, or one file, in the checkout. A pull request runs the flows its changes touch.
+    default: .nomac/flows
+  flow:
+    description: Steps to run instead of flow files, one a line.
+    required: false
+  run:
+    description: changed (the flows a pull request touches, and those that cover no paths) or all.
+    default: changed
+  device:
+    description: iphone, ipad or iphone-pro-max.
+    default: iphone
+  phone-link:
+    description: "A link in the comment that opens this build on a phone, with no sign-in: auto (in private repositories), on or off."
+    default: auto
+  phone-link-phones:
+    description: How many phones the link may start over its 7 days, one at a time.
+    default: "3"
+  phone-link-minutes:
+    description: How long each of those phones may run (it also stops after 5 minutes without a viewer).
+    default: "15"
+  public-links:
+    description: In a public repository, put links that open without sign-in (recordings, the phone link) in the comment anyway.
+    default: "false"
+  forks:
+    description: Build pull requests from forks (needs pull_request_target; anyone who opens one spends this account's credit).
+    default: "false"
+  max-cost:
+    description: The most one run may cost, in US dollars (the phone's spend cap).
+    default: "1"
+  max-minutes:
+    description: The longest one run's phone may run.
+    default: "30"
+  wait-minutes:
+    description: How long to wait for a phone while the account's phones are all in use.
+    default: "10"
+  label:
+    description: The NoMac label whose workspace builds incrementally (default github:<repository id>).
+    required: false
+  comment:
+    description: Post the result on the pull request, editing the same comment on every push (needs pull-requests write).
+    default: "true"
+  comment-id:
+    description: Tells this step's comment from another's (default the job and the device).
+    required: false
+  github-token:
+    description: For the comment, the pull request's files, and fetching a private repository.
+    default: ${{ github.token }}
+outputs:
+  result:
+    description: passed, failed or skipped.
+  phone-id:
+    description: The NoMac phone the run used.
+  phone-link:
+    description: The link that opens this build on a phone.
+  replay:
+    description: The run's replay.
+  cost-microunits:
+    description: What the run cost, in microdollars.
+runs:
+  using: node24
+  main: index.mjs
+  post: post.mjs
+branding:
+  icon: smartphone
+  color: blue

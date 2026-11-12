@@ -1,6 +1,54 @@
 # NoMac Actions
 
-Sign an iOS app, send it to TestFlight and submit it for App Review from a [NoMac CI](https://nomac.app/docs/ci) job (`runs-on: nomac`), with no Apple secret stored in GitHub. NoMac keeps the App Store Connect key and makes the profiles; the job's Mac gets only NoMac's CI certificate and the profiles of the bundle IDs you allowed, for that job.
+[proof](#proof) builds each pull request's iOS app on a NoMac iPhone Simulator, runs the flows it changed and posts a recording and a phone link on the pull request, from any runner. [sign](#sign), [testflight](#testflight) and [publish](#publish) sign an iOS app, send it to TestFlight and submit it for App Review from a [NoMac CI](https://nomac.app/docs/ci) job (`runs-on: nomac`), with no Apple secret stored in GitHub. NoMac keeps the App Store Connect key and makes the profiles; the job's Mac gets only NoMac's CI certificate and the profiles of the bundle IDs you allowed, for that job.
+
+## proof
+
+```yaml
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: proof-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        if: github.event.action != 'closed'
+      - uses: NoMac-app/actions/proof@v1
+        with:
+          api-key: ${{ secrets.NOMAC_API_KEY }}
+```
+
+On each push to a pull request, a NoMac phone fetches the pull request's commit into this repository's workspace on NoMac, kept between runs, so Xcode rebuilds only what changed. The app launches, the flows the pull request touches run and are recorded, and one comment on the pull request, edited on every push, shows each flow's result and recording, the last screen as text, what the run cost at NoMac's price, and a link that opens this build on a phone with no sign-in for 7 days. Nothing runs on the runner but the requests, so `ubuntu-latest` is enough. [Docs](https://nomac.app/docs/simulator/proof); a sample app is in [examples/proof](examples/proof).
+
+A flow is a file in `.nomac/flows`, one step a line in [simulator-use](https://github.com/NoMac-app/simulator-use)'s words, with `# paths:` naming the files it covers:
+
+```
+# paths: Sources/Cart/**
+launch
+tap #add-Espresso
+tap "Cart"
+wait "1 item"
+```
+
+`launch [arguments]` starts the app fresh, `open <url>` opens a link, `look` puts the screen in the comment, and every other line is a `ui_act` step (`tap`, `fill`, `type`, `scroll`, `swipe`, `wait`, `gone`, `back`...). A flow without `# paths:` runs on every pull request; `run: all` runs them all.
+
+| Input | |
+| --- | --- |
+| `api-key` | a NoMac API key, as a secret |
+| `path`, `scheme`, `configuration`, `env` | the project's folder (`.`), its scheme, Debug or Release, the app's launch variables |
+| `flows` or `flow` | a folder of `.flow` files (`.nomac/flows`), or steps inline |
+| `device` | `iphone`, `ipad` or `iphone-pro-max` |
+| `phone-link` | `auto` (in private repositories), `on` or `off`; `phone-link-phones` (3) and `phone-link-minutes` (15) bound what it may start |
+| `max-cost`, `max-minutes` | one run's spend cap in dollars (1) and longest run (30) |
+
+The phone link starts a phone only when someone opens it, billed per minute to the account; the comment says the most it may cost. A public repository's comment has no link that opens without sign-in unless `public-links: true`. A pull request from a fork gets no secrets and is skipped. Closing the pull request deletes the build its link opens.
 
 ```yaml
 permissions:
