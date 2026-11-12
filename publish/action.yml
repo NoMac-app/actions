@@ -1,0 +1,30 @@
+name: NoMac publish
+description: Submit a build already on App Store Connect for App Review from a NoMac CI job; the App Store Connect key stays on NoMac's server.
+author: NoMac
+inputs:
+  bundle-id:
+    description: The app's bundle ID (the testflight step's bundle-id output).
+    required: true
+  version:
+    description: The version to submit, as in the app's Info.plist (the testflight step's version output).
+    required: true
+  build:
+    description: Its build number (the testflight step's build-number output).
+    required: true
+  resolve-rejection:
+    description: "true when Apple rejected this version before: marks its review item fixed, so this build goes for review."
+    default: "false"
+  wait-minutes:
+    description: How long to wait for Apple to process the build.
+    default: "30"
+outputs:
+  submission-id:
+    description: Apple's id for the review submission.
+  state:
+    description: submitted.
+runs:
+  using: node24
+  main: index.mjs
+branding:
+  icon: upload-cloud
+  color: blue

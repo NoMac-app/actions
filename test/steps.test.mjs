@@ -91,6 +91,74 @@ test("a spent day's TestFlight limit fails at once, not after five tries", async
   } finally { nomac.close(); }
 });
 
+test("testflight hands the build's bundle ID, version and number to the publish step", async () => {
+  const nomac = await stand([[200, { id: "tfu_1", state: "processing", message: "Apple has the build.", app: { bundle_id: "com.acme.app", version: "1.2", build_number: "7" } }]]);
+  try {
+    const ipa = join(mkdtempSync(join(tmpdir(), "nomac-ipa-")), "App.ipa"); writeFileSync(ipa, "ipa");
+    const result = await step("testflight", nomac.url, { INPUT_IPA: ipa });
+    assert.equal(result.code, 0, result.out);
+    assert.match(result.outputs, /^bundle-id<<(NOMAC_[0-9a-f]{16})\ncom\.acme\.app\n\1$/m);
+    assert.match(result.outputs, /^version<<(NOMAC_[0-9a-f]{16})\n1\.2\n\1$/m);
+    assert.match(result.outputs, /^build-number<<(NOMAC_[0-9a-f]{16})\n7\n\1$/m);
+  } finally { nomac.close(); }
+});
+
+const publishInputs = { "INPUT_BUNDLE-ID": "com.acme.app", INPUT_VERSION: "1.2", INPUT_BUILD: "7" };
+
+test("publish waits while Apple processes the build and Apple confirms, asking the same thing with a fresh token each time", async () => {
+  const nomac = await stand([
+    [409, { error: { code: "build_processing", message: "Apple is still processing build 1.2 (7).", retry_after_seconds: 0 } }],
+    [409, { error: { code: "apple_edit_in_progress", message: "Another change to this Apple app is still running.", retry_after_seconds: 0 } }],
+    [202, { state: "pending", staged: false, request_key: "ci-1-abc", error: { code: "apple_request_pending", message: "Apple has not confirmed the review submission.", retry_after_seconds: 0 } }],
+    [200, { submission_id: "sub_n", asc_submission_id: "asc_sub_1", state: "submitted", message: "Submitted com.acme.app 1.2 (7) for App Review." }]]);
+  try {
+    const result = await step("publish", nomac.url, publishInputs);
+    assert.equal(result.code, 0, result.out);
+    assert.match(result.outputs, /^submission-id<<(NOMAC_[0-9a-f]{16})\nasc_sub_1\n\1$/m);
+    assert.match(result.outputs, /^state<<(NOMAC_[0-9a-f]{16})\nsubmitted\n\1$/m);
+    assert.match(result.out, /Submitted com\.acme\.app 1\.2 \(7\) for App Review\./);
+    assert.match(result.out, /apple_request_pending: .*, request ci-1-abc/, "the request's key, for finishing it by hand");
+    const calls = nomac.seen.filter(line => line.startsWith("POST /api/v1/ci/publish"));
+    assert.equal(calls.length, 4);
+    assert.equal(new Set(calls.map(line => line.split(" ").pop())).size, 4, "a fresh token for each call");
+    assert.deepEqual(nomac.bodies.map(body => JSON.parse(body)), Array(4).fill({ bundle_id: "com.acme.app", version: "1.2", build: "7" }));
+  } finally { nomac.close(); }
+});
+
+test("publish asks NoMac to mark a rejected version fixed only when told to", async () => {
+  const nomac = await stand([[200, { asc_submission_id: "asc_sub_1", state: "submitted" }]]);
+  try {
+    const result = await step("publish", nomac.url, { ...publishInputs, "INPUT_RESOLVE-REJECTION": "true" });
+    assert.equal(result.code, 0, result.out);
+    assert.deepEqual(JSON.parse(nomac.bodies[0]), { bundle_id: "com.acme.app", version: "1.2", build: "7", resolve_rejection: true });
+  } finally { nomac.close(); }
+});
+
+test("publish fails at once on a refusal, a spent day or Apple's blockers, with NoMac's words", async () => {
+  // An earlier change to the app that was interrupted (no retry_after_seconds) waits for a person, not for the step.
+  for (const [status, code] of [[403, "ci_publish_off"], [429, "ci_publish_limit"], [422, "ci_publish_other_items"], [422, "lint_gate_red"], [409, "apple_edit_in_progress"]]) {
+    const nomac = await stand([[status, { error: { code, message: `Refused: ${code}.` } }]]);
+    try {
+      const result = await step("publish", nomac.url, publishInputs);
+      assert.equal(result.code, 1, code);
+      assert.match(result.out, new RegExp(`::error::NoMac: Refused: ${code}\\. \\(${code}\\)`));
+      assert.equal(nomac.seen.filter(line => line.startsWith("POST")).length, 1, code);
+    } finally { nomac.close(); }
+  }
+});
+
+test("publish stops waiting for Apple's processing after wait-minutes, and needs the build named", async () => {
+  const nomac = await stand([[409, { error: { code: "build_processing", message: "Apple is still processing build 1.2 (7).", retry_after_seconds: 0 } }]]);
+  try {
+    const result = await step("publish", nomac.url, { ...publishInputs, "INPUT_WAIT-MINUTES": "0" });
+    assert.equal(result.code, 1);
+    assert.match(result.out, /::error::NoMac: Apple is still processing build 1\.2 \(7\)\. \(build_processing; still so after the step's wait\)/);
+  } finally { nomac.close(); }
+  const unnamed = await step("publish", "http://127.0.0.1:9", { "INPUT_BUNDLE-ID": "com.acme.app" });
+  assert.equal(unnamed.code, 1);
+  assert.match(unnamed.out, /needs bundle-id, version and build/);
+});
+
 test("never sends the job's token anywhere but NoMac or a stand-in on this computer", async () => {
   const { apiBase } = await import("../lib/nomac.mjs");
   assert.equal(apiBase(""), "https://nomac.app");

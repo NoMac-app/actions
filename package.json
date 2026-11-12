@@ -2,7 +2,7 @@
   "name": "nomac-actions",
   "private": true,
   "type": "module",
-  "description": "NoMac's sign and TestFlight steps for NoMac CI jobs.",
+  "description": "NoMac's sign, TestFlight and publish steps for NoMac CI jobs.",
   "license": "MIT",
   "scripts": { "test": "node --test test/steps.test.mjs" }
 }

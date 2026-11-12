@@ -19,7 +19,7 @@ while (!done(view.state) && Date.now() < until) {
   console.log(`${view.state}: ${view.message ?? ""}`);
   view = await nomac("GET", `/api/v1/ci/testflight/${view.id}`);
 }
-hand({ "upload-id": view.id, state: view.state }, {});
+hand({ "upload-id": view.id, state: view.state, "bundle-id": view.app?.bundle_id, version: view.app?.version, "build-number": view.app?.build_number }, {});
 if (view.state === "failed") fail(`TestFlight: ${view.error?.message ?? "the send failed"}${view.next_action ? ` ${view.next_action}` : ""}`);
 if (!done(view.state)) fail(`TestFlight: still ${view.state} after the step's wait; NoMac goes on with it (send ${view.id}).`);
 if (view.needs_human) console.log(`::warning::${view.needs_human.message ?? view.message} ${view.needs_human.url ?? ""}`.trim());

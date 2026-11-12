@@ -16,6 +16,12 @@ outputs:
     description: NoMac's id for the send.
   state:
     description: processing or on_testflight.
+  bundle-id:
+    description: The app's bundle ID, for the publish step.
+  version:
+    description: The build's version, for the publish step.
+  build-number:
+    description: The build's number, for the publish step.
 runs:
   using: node24
   main: index.mjs
