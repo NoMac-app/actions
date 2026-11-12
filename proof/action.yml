@@ -33,16 +33,16 @@ inputs:
     description: "A link in the comment that opens this build on a phone, with no sign-in: auto (in private repositories), on or off."
     default: auto
   phone-link-phones:
-    description: How many phones the link may start over its 7 days, one at a time.
+    description: How many phones this pull request's links may start in all, one at a time (each link works 7 days).
     default: "3"
   phone-link-minutes:
-    description: How long each of those phones may run (it also stops after 5 minutes without a viewer).
+    description: How long each of those phones may run (it also stops after 5 minutes without a tap or a key).
     default: "15"
   public-links:
     description: In a public repository, put links that open without sign-in (recordings, the phone link) in the comment anyway.
     default: "false"
   forks:
-    description: Build pull requests from forks (needs pull_request_target; anyone who opens one spends this account's credit).
+    description: Build pull requests from forks, by commit from this repository and never with the job's token (needs pull_request_target; anyone who opens one spends this account's credit).
     default: "false"
   max-cost:
     description: The most one run may cost, in US dollars (the phone's spend cap).

@@ -26,7 +26,6 @@ const repo = process.env.GITHUB_REPOSITORY ?? repository.full_name ?? "";
 const server = (process.env.GITHUB_SERVER_URL ?? "https://github.com").replace(/\/$/, "");
 const runUrl = `${server}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID ?? ""}`;
 const sha = pr?.head?.sha ?? process.env.GITHUB_SHA ?? "";
-const headRepo = pr?.head?.repo?.full_name ?? repo;
 const fork = Boolean(pr) && pr.head?.repo?.id !== repository.id;
 const isPrivate = repository.private === true || ["private", "internal"].includes(repository.visibility);
 
@@ -207,8 +206,10 @@ async function main() {
     readyAt = (await waitReady(nomac, phone)).ready_at;
     report.dashboard = `https://nomac.app/dash/simulators/${phone}`;
 
-    const fetched = await nomac.operation(phone, "/sync/git", { url: `https://github.com/${headRepo}`, ...(sha ? { ref: sha } : {}), ...(isPrivate && token ? { token } : {}) }, { by });
-    log(`Fetched ${headRepo} at ${fetched.commit ?? sha.slice(0, 12)}.`);
+    // From this repository by commit, a fork's pull request too (GitHub keeps its commits here); the job's token only for
+    // this repository's own private code, never for a fork's.
+    const fetched = await nomac.operation(phone, "/sync/git", { url: `https://github.com/${repo}`, ...(sha ? { ref: sha } : {}), ...(isPrivate && !fork && token ? { token } : {}) }, { by });
+    log(`Fetched ${repo} at ${fetched.commit ?? sha.slice(0, 12)}.`);
     const args = { path: path ? `${fetched.root}/${path}` : fetched.root, ...Object.fromEntries(["scheme", "configuration", "env"].map(k => [k, input(k)]).filter(([, v]) => v)) };
     report.build = parseBuild(await nomac.toolToEnd(phone, "app_run", args, { by }));
     log(report.build.ok ? `Built ${report.build.scheme} in ${report.build.seconds} s: ${report.build.bundle}.` : `The build failed:\n${report.build.errors}`);

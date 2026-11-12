@@ -76,7 +76,7 @@ function nomacPhone({ build = "ok", flows = {}, relaunch = true } = {}) {
 
 /** GitHub as the stand-in plays it: the pull request's files, and its comments (one of ours already there). */
 function gitHub({ files = ["Sources/Cart/CartView.swift"], existing } = {}) {
-  const comments = existing ? [{ id: 99, body: existing }] : [];
+  const comments = existing ? [{ id: 1, user: { login: "someone" }, body: existing }, { id: 99, user: { login: "github-actions[bot]" }, body: existing }] : [];
   return (r) => {
     if (!r.path.startsWith("/repos/")) return undefined;
     assert.equal(r.auth, "Bearer gh_token", "GitHub's calls carry the job's token, never NoMac's key");
@@ -84,7 +84,7 @@ function gitHub({ files = ["Sources/Cart/CartView.swift"], existing } = {}) {
     if (r.method === "GET" && r.path === "/repos/acme/app/issues/7/comments") return [200, comments];
     const edited = /^\/repos\/acme\/app\/issues\/comments\/(\d+)$/.exec(r.path);
     if (r.method === "PATCH" && edited) { comments.find(c => c.id === Number(edited[1])).body = r.body.body; return [200, { id: Number(edited[1]) }]; }
-    if (r.method === "POST" && r.path === "/repos/acme/app/issues/7/comments") { comments.push({ id: 100, body: r.body.body }); return [201, { id: 100 }]; }
+    if (r.method === "POST" && r.path === "/repos/acme/app/issues/7/comments") { comments.push({ id: 100, user: { login: "github-actions[bot]" }, body: r.body.body }); return [201, { id: 100 }]; }
     return undefined;
   };
 }
@@ -146,6 +146,8 @@ test("a private repository's pull request: built on a phone of its label, the fl
     // One comment, edited: running, then the result.
     const edits = api.seen.filter(r => r.method === "PATCH");
     assert.equal(edits.length, 2);
+    // GitHub Actions' own comment, never one someone else wrote with the marker pasted in.
+    assert.deepEqual(edits.map(r => r.path), ["/repos/acme/app/issues/comments/99", "/repos/acme/app/issues/comments/99"]);
     assert.equal(api.seen.filter(r => r.method === "POST" && r.path.startsWith("/repos/")).length, 0);
     assert.match(edits[0].body.body, /### NoMac Proof · Running\n\nBuilding `abc123d` on an iPhone Simulator on NoMac\.\n\nThe result below is for the last run;[^\n]*\n\nBuilt `Demo` from `0000000`\./);
     const body = edits[1].body.body;
@@ -154,7 +156,7 @@ test("a private repository's pull request: built on a phone of its label, the fl
     assert.match(body, /\| cart \| Passed: 2 steps in \d+ s \| \[Watch\]\(https:\/\/nomac\.app\/simulator-use\/replay\/rp\.sig\?t=\d+\) · \[MP4\]\(https:\/\/nomac\.app\/api\/v1\/simulator\/files\/clip\.sig\) \|/);
     assert.match(body, /\| smoke \| Passed: 2 steps in \d+ s \|/);
     assert.doesNotMatch(body, /settings/);
-    assert.match(body, /\*\*Try this build:\*\* \[open it on a phone\]\(https:\/\/nomac\.app\/simulator-use\/view\/relaunch\.sig\), no sign-in, until November 19\. .*at most 3 phones of 15 minutes, 67\.5¢ in all\./);
+    assert.match(body, /\*\*Try this build:\*\* \[open it on a phone\]\(https:\/\/nomac\.app\/simulator-use\/view\/relaunch\.sig\), no sign-in, until November 19\. .*every link of this pull request together starts at most 3 phones of 15 minutes, 67\.5¢ in all\./);
     assert.match(body, /This run: 2 minutes, 3¢ at \$0\.90 an hour\./);
     assert.match(body, /<summary>The last screen, as text<\/summary>\n\n```text\nDemo: text "1 item"\n```/);
     assert.doesNotMatch(body, /—/);
@@ -233,6 +235,18 @@ test("a fork's pull request, or a missing key, is skipped without a call; a clos
     assert.match(closing.seen.find(r => r.method === "PATCH").body.body, /\*\*Try this build:\*\* this pull request is closed, so its phone link no longer opens a phone\./);
     assert.equal(closing.seen.filter(r => r.method === "POST").length, 0, "no phone started");
   } finally { closing.close(); }
+});
+
+test("with forks: true, a fork's pull request is fetched by commit from this repository, never with the job's token", async () => {
+  const stands = [nomacPhone(), gitHub()];
+  const api = await stand((r, seen) => stands.map(s => s(r, seen)).find(Boolean));
+  try {
+    const event = pullRequest({ pull_request: { number: 7, head: { sha: "f".repeat(40), repo: { id: 77, full_name: "someone/app" } } } });
+    const result = await step(api.url, { event, inputs: { forks: "true", flow: "tap #add" } });
+    assert.equal(result.code, 0, result.out);
+    assert.deepEqual(api.seen.find(r => r.path.endsWith("/sync/git")).body, { url: "https://github.com/acme/app", ref: "f".repeat(40) });
+    assert.ok(api.seen.filter(r => r.path.startsWith("/api/")).every(r => !JSON.stringify(r.body ?? {}).includes("gh_token")), "the job's token never reaches NoMac for a fork");
+  } finally { api.close(); }
 });
 
 test("a failed build shows its errors as file:line, without the log's link, and runs no flow", async () => {

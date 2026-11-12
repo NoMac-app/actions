@@ -36,10 +36,10 @@ export function github(token) {
       const files = await all(`/repos/${repo}/pulls/${number}/files`);
       return files.flatMap(f => [f.filename, ...(f.previous_filename ? [f.previous_filename] : [])]);
     },
-    /** The comment that carries this marker, or nothing. */
+    /** The comment that carries this marker, written by GitHub Actions (the job's token), or nothing: anyone may paste a marker. */
     async findComment(repo, number, marker) {
       const comments = await all(`/repos/${repo}/issues/${number}/comments`);
-      return comments.find(c => typeof c.body === "string" && c.body.includes(marker));
+      return comments.find(c => c.user?.login === "github-actions[bot]" && typeof c.body === "string" && c.body.includes(marker));
     },
     /** The comment written: edited in place when there is one, else a new one. Answers its id. */
     async writeComment(repo, number, id, body) {

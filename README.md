@@ -48,7 +48,7 @@ wait "1 item"
 | `phone-link` | `auto` (in private repositories), `on` or `off`; `phone-link-phones` (3) and `phone-link-minutes` (15) bound what it may start |
 | `max-cost`, `max-minutes` | one run's spend cap in dollars (1) and longest run (30) |
 
-The phone link starts a phone only when someone opens it, billed per minute to the account; the comment says the most it may cost. A public repository's comment has no link that opens without sign-in unless `public-links: true`. A pull request from a fork gets no secrets and is skipped. Closing the pull request deletes the build its link opens.
+The phone link starts a phone only when someone opens it, billed per minute to the account, and every link of one pull request shares one budget (`phone-link-phones` phones in all); the comment says the most they may cost. A public repository's comment has no link that opens without sign-in unless `public-links: true`. A pull request from a fork gets no secrets and is skipped. Closing the pull request deletes the build its link opens.
 
 ```yaml
 permissions:

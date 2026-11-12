@@ -49,7 +49,7 @@ export function render(report, id) {
   } else if (build?.ok) lines.push(report.flowsNote ?? "No flow ran: the app was built and launched.", "");
   if (report.phoneLink) {
     const link = report.phoneLink;
-    lines.push(`**Try this build:** [open it on a phone](${link.url}), no sign-in, until ${day(link.expires_at)}. Opening it starts a phone with this build on this repository's NoMac account, billed per minute: at most ${link.phones} ${link.phones === 1 ? "phone" : "phones"} of ${link.minutes} minutes, ${money(link.most_microunits)} in all.`, "");
+    lines.push(`**Try this build:** [open it on a phone](${link.url}), no sign-in, until ${day(link.expires_at)}. Opening it starts a phone with this build on this repository's NoMac account, billed per minute: every link of this pull request together starts at most ${link.phones} ${link.phones === 1 ? "phone" : "phones"} of ${link.minutes} minutes, ${money(link.most_microunits)} in all.`, "");
   }
   if (!report.links && report.dashboard) lines.push(`The recordings and the replay are on [NoMac](${report.dashboard}) (sign-in): this repository is public, so the comment has no link that opens without one.`, "");
   const facts = [];
